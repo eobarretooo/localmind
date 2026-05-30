@@ -103,6 +103,17 @@ def test_default_system_prompt_identifies_as_localmind_not_backend() -> None:
     assert "identify yourself as LocalMind" in DEFAULT_SYSTEM_PROMPT
 
 
+def test_default_system_prompt_treats_user_name_as_user_information() -> None:
+    assert "If the user shares personal information such as their name" in DEFAULT_SYSTEM_PROMPT
+    assert "treat it as information about the user" in DEFAULT_SYSTEM_PROMPT
+    assert "do not claim it as your own" in DEFAULT_SYSTEM_PROMPT
+
+
+def test_default_system_prompt_requires_using_session_history_for_follow_ups() -> None:
+    assert "Use the conversation history when answering follow-up questions." in DEFAULT_SYSTEM_PROMPT
+    assert "answer from the session history" in DEFAULT_SYSTEM_PROMPT
+
+
 def test_agent_sends_system_message_first_to_provider() -> None:
     provider = _RecordingProvider()
     agent = Agent(system_prompt=DEFAULT_SYSTEM_PROMPT, provider_manager=_RecordingProviderManager(provider))
@@ -124,6 +135,16 @@ def test_agent_answers_common_identity_questions_as_localmind() -> None:
     result = asyncio.run(agent.ask("What are you?"))
 
     assert result == "I am LocalMind, a local-first AI assistant running on your Linux machine."
+    assert provider.calls == []
+
+
+def test_agent_acknowledges_common_user_name_introductions_without_using_provider() -> None:
+    provider = _RecordingProvider()
+    agent = Agent(system_prompt=DEFAULT_SYSTEM_PROMPT, provider_manager=_RecordingProviderManager(provider))
+
+    result = asyncio.run(agent.ask("Hello, my name is Antonio."))
+
+    assert result == "Nice to meet you, Antonio."
     assert provider.calls == []
 
 

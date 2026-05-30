@@ -1,13 +1,14 @@
 # LocalMind
 
-LocalMind is a small CLI-first Python scaffold for talking to a local LLM server through an OpenAI-compatible API. This repository intentionally keeps the first version minimal: configuration loading, provider abstraction, simple agent flow, and a tiny SQLite-backed session placeholder.
+LocalMind is a small CLI-first Python scaffold for talking to a local LLM server through an OpenAI-compatible API. This repository intentionally keeps the first version minimal: configuration loading, provider abstraction, simple agent flow, and a small SQLite-backed persistent session store.
 
 ## Features
 
 - Python package installable with `pip install -e .`
-- Typer CLI with `init`, `ask`, `chat`, `config show`, and `models test`
+- Typer CLI with `init`, `ask`, `chat`, `sessions`, `config show`, and `models test`
 - Config loading from `./localmind.yaml`, then `~/.config/localmind/config.yaml`, then defaults
 - OpenAI-compatible provider defaults aimed at `llama.cpp` server mode
+- Persistent SQLite sessions and message history
 - Small, typed, testable package layout for future growth
 
 ## Installation
@@ -68,10 +69,26 @@ Ask a single question:
 localmind ask "Summarize the purpose of this project."
 ```
 
+Ask within an existing session:
+
+```bash
+localmind ask "Continue the earlier plan." --session SESSION_ID
+```
+
 Start an interactive chat:
 
 ```bash
 localmind chat
+```
+
+Resume or manage sessions:
+
+```bash
+localmind chat --session SESSION_ID
+localmind chat --new
+localmind sessions list
+localmind sessions show SESSION_ID
+localmind sessions delete SESSION_ID
 ```
 
 Exit the chat REPL with `exit`, `quit`, or `Ctrl+D`.
@@ -85,3 +102,12 @@ Load order:
 3. built-in defaults
 
 An example configuration is included in `config.example.yaml`.
+
+## History
+
+LocalMind stores persistent chat state in SQLite at `memory.db_path`.
+
+- `chat` creates a new session automatically unless `--session` is provided
+- `ask` stays one-shot by default, but `--session` appends to an existing session
+- The model context always starts with `app.system_prompt`
+- Recent history is capped by `app.max_history_messages` and defaults to `12`
