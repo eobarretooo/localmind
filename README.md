@@ -23,7 +23,7 @@ The current default backend is a local `llama.cpp` server exposed through an Ope
 - CLI-first: built around direct terminal workflows instead of a browser UI.
 - Privacy-friendly: conversation state is stored locally in SQLite.
 - Provider-agnostic architecture: current default is `llama.cpp`, but the structure is intended to support other OpenAI-compatible or future providers over time.
-- Designed to grow: planned evolution includes plugins, safe tools, richer memory, a local API, and a WebUI.
+- Designed to grow: planned evolution includes richer memory, a local API, and broader project assistance.
 
 ## Current Features
 
@@ -31,17 +31,18 @@ Only features that exist today are listed here.
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| CLI with Typer | Available | Includes `init`, `ask`, `chat`, `sessions`, `config show`, and `models test` |
+| CLI with Typer | Available | Includes `init`, `ask`, `chat`, `sessions`, `config show`, `models test`, and `files` commands |
 | `llama.cpp` / OpenAI-compatible provider | Available | Current backend flow targets a local `llama.cpp` server through an OpenAI-compatible API |
 | Config loading | Available | Loads `./localmind.yaml`, then `~/.config/localmind/config.yaml`, else defaults |
 | Persistent SQLite sessions | Available | Stores session and message history locally |
 | `ask` and `chat` commands | Available | Supports one-shot prompts plus interactive chat with new or resumed sessions |
 | Sessions management | Available | Supports listing, showing, deleting, and resuming saved sessions |
 | Model connectivity test | Available | Verifies provider access and reported model availability |
+| Safe local file commands | Available | Explicit `files list`, `read`, `search`, `summarize`, and `summarize-project` commands with size and path safety checks |
 | Clean modular Python layout | Available | Split into focused packages for CLI, config, LLM/provider, and tools infrastructure |
 | `pytest` test suite | Available | Repository includes automated tests covering imports, sessions, behavior, and CLI chat flows |
 
-Not included yet: plugins, tool execution, WebUI, vector RAG, or a built-in local API/server.
+Not included: plugins, WebUI, vector RAG, embeddings, MCP, autonomous tool-calling, or a built-in local API/server.
 
 ## Architecture Overview
 
@@ -147,6 +148,7 @@ Current defaults:
 | Provider type | `openai_compatible` |
 | Provider URL | `http://127.0.0.1:8080/v1` |
 | Default model | `openbmb/MiniCPM5-1B-GGUF:Q4_K_M` |
+| Max file bytes | `200000` |
 
 Generate a local config file with:
 
@@ -210,6 +212,36 @@ Send another one-shot message into an existing session:
 localmind ask "What is my name?" --session SESSION_ID
 ```
 
+List files recursively under the current directory, skipping common build, cache, virtualenv, VCS, and `references/` folders:
+
+```bash
+localmind files list .
+```
+
+Read a safe text file with truncation if needed:
+
+```bash
+localmind files read README.md
+```
+
+Search text files for a string:
+
+```bash
+localmind files search . LocalMind
+```
+
+Summarize one file without creating a persistent chat session unless `--session` is provided:
+
+```bash
+localmind files summarize README.md
+```
+
+Summarize a project from a compact file context:
+
+```bash
+localmind files summarize-project .
+```
+
 ## Roadmap
 
 This roadmap separates what is already implemented from what is next or planned.
@@ -232,10 +264,12 @@ This roadmap separates what is already implemented from what is next or planned.
 
 ### Phase 3 — Safe file tools
 
-- Status: next
+- Status: done
 - list files
 - read files
+- search files
 - summarize files
+- summarize project
 - workspace safety
 
 ### Phase 4 — Local memory

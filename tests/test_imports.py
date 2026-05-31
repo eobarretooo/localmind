@@ -13,6 +13,7 @@ def test_imports() -> None:
     import localmind.llm.openai_compatible
     import localmind.memory.sqlite
     import localmind.tools.base
+    import localmind.tools.filesystem
     import localmind.tools.registry
     import localmind.utils.logging
 

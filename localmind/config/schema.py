@@ -27,6 +27,7 @@ class LoggingConfig(BaseModel):
 class AppSettings(BaseModel):
     system_prompt: str = DEFAULT_SYSTEM_PROMPT
     max_history_messages: int = Field(default=12, ge=1)
+    max_file_bytes: int = Field(default=200_000, ge=1)
 
 
 class ProviderConfig(BaseModel):
@@ -34,7 +35,7 @@ class ProviderConfig(BaseModel):
     base_url: str = "http://127.0.0.1:8080/v1"
     api_key: str | None = None
     model: str = "openbmb/MiniCPM5-1B-GGUF:Q4_K_M"
-    timeout_seconds: float = 30.0
+    timeout_seconds: float = 120.0
 
 
 class MemoryConfig(BaseModel):
