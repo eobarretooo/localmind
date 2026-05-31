@@ -31,7 +31,7 @@ Only features that exist today are listed here.
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| CLI with Typer | Available | Includes `init`, `ask`, `chat`, `sessions`, `memory`, `config show`, `models test`, and `files` commands |
+| CLI with Typer | Available | Includes `init`, `ask`, `chat`, `sessions`, `memory`, `plugins`, `config show`, `models test`, and `files` commands |
 | `llama.cpp` / OpenAI-compatible provider | Available | Current backend flow targets a local `llama.cpp` server through an OpenAI-compatible API |
 | Config loading | Available | Loads `./localmind.yaml`, then `~/.config/localmind/config.yaml`, else defaults |
 | Persistent SQLite sessions | Available | Stores session and message history locally |
@@ -40,10 +40,11 @@ Only features that exist today are listed here.
 | Sessions management | Available | Supports listing, showing, deleting, and resuming saved sessions |
 | Model connectivity test | Available | Verifies provider access and reported model availability |
 | Safe local file commands | Available | Explicit `files list`, `read`, `search`, `summarize`, and `summarize-project` commands with size and path safety checks |
+| Plugin foundation | Available | Supports plugin discovery, manifest validation, metadata inspection, and persisted enable/disable state without executing plugin code |
 | Clean modular Python layout | Available | Split into focused packages for CLI, config, LLM/provider, and tools infrastructure |
 | `pytest` test suite | Available | Repository includes automated tests covering imports, sessions, behavior, and CLI chat flows |
 
-Not included: plugins, WebUI, vector RAG, embeddings, MCP, autonomous tool-calling, or a built-in local API/server.
+Not included: plugin code execution, dynamic plugin command loading, WebUI, vector RAG, embeddings, MCP, autonomous tool-calling, or a built-in local API/server.
 
 ## Architecture Overview
 
@@ -151,6 +152,7 @@ Current defaults:
 | Default model | `openbmb/MiniCPM5-1B-GGUF:Q4_K_M` |
 | Max file bytes | `200000` |
 | Max injected memory items | `5` |
+| Plugin directory | `./plugins` |
 
 Generate a local config file with:
 
@@ -232,6 +234,24 @@ Search memories:
 localmind memory search Antonio
 ```
 
+List discovered plugins:
+
+```bash
+localmind plugins list
+```
+
+Show plugin metadata:
+
+```bash
+localmind plugins info hello_world
+```
+
+Validate a plugin folder without executing code:
+
+```bash
+localmind plugins validate plugins/hello_world
+```
+
 List files recursively under the current directory, skipping common build, cache, virtualenv, VCS, and `references/` folders:
 
 ```bash
@@ -302,10 +322,12 @@ This roadmap separates what is already implemented from what is next or planned.
 
 ### Phase 5 — Plugin system
 
-- Status: planned
+- Status: foundation available
 - plugin discovery
 - `plugin.yaml`
-- commands and tools from plugins
+- metadata inspection
+- persisted enable/disable state
+- commands and tools from plugins are still planned
 
 ### Phase 6 — Project/code agent
 
@@ -348,7 +370,7 @@ This roadmap separates what is already implemented from what is next or planned.
 
 ## Project Status
 
-LocalMind is early-stage but functional. The current codebase already supports real CLI usage, persistent sessions, configuration loading, and local model connectivity testing, the current test suite passes, and larger capabilities remain on the roadmap.
+LocalMind is early-stage but functional. The current codebase already supports real CLI usage, persistent sessions, configuration loading, local model connectivity testing, and a non-executing plugin foundation for discovery and state management, while larger capabilities remain on the roadmap.
 
 ## Design Principles
 

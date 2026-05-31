@@ -14,6 +14,7 @@ from localmind.config.loader import dump_config, load_config
 from localmind.core.session import SessionNotFoundError
 from localmind.llm.base import ProviderConnectionError
 from localmind.memory.sqlite import MemoryRecord, SQLiteMemoryStore
+from localmind.plugins import PluginManager, PluginNotFoundError, PluginStateStore, PluginValidationError
 from localmind.tools.filesystem import (
     BinaryFileError,
     FileTooLargeError,
@@ -33,6 +34,7 @@ models_app = typer.Typer(help="Model connectivity commands")
 sessions_app = typer.Typer(help="Manage persistent chat sessions")
 files_app = typer.Typer(help="Safe local file commands")
 memory_app = typer.Typer(help="Manage local memories")
+plugins_app = typer.Typer(help="Inspect plugin metadata and enabled state")
 console = Console()
 error_console = Console(stderr=True)
 
@@ -41,6 +43,7 @@ app.add_typer(models_app, name="models")
 app.add_typer(sessions_app, name="sessions")
 app.add_typer(files_app, name="files")
 app.add_typer(memory_app, name="memory")
+app.add_typer(plugins_app, name="plugins")
 
 _CHAT_EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q"}
 _CHAT_STARTUP_TEXT = "Type 'exit', 'quit', '/exit', '/quit', or ':q' to leave."
@@ -207,6 +210,97 @@ def memory_clear(yes: bool = typer.Option(False, "--yes", help="Skip confirmatio
     store = _open_memory_store()
     deleted = store.clear_memories()
     console.print(f"Cleared {deleted} memories", markup=False)
+
+
+@plugins_app.command("list")
+def plugins_list() -> None:
+    """List discovered plugins and their enabled state."""
+    manager = _open_plugin_manager()
+    plugins = manager.list_plugins()
+    if not plugins:
+        console.print(f"No plugins found in {manager.plugin_directory.resolve()}", markup=False)
+        return
+
+    table = Table(title="Discovered plugins")
+    table.add_column("Name")
+    table.add_column("Version")
+    table.add_column("Description")
+    table.add_column("Status")
+    table.add_column("Path")
+    for plugin in plugins:
+        table.add_row(
+            plugin.metadata.name,
+            plugin.metadata.version,
+            plugin.metadata.description,
+            "enabled" if plugin.enabled else "disabled",
+            str(plugin.path),
+        )
+    console.print(table)
+
+
+@plugins_app.command("info")
+def plugins_info(plugin_name: str) -> None:
+    """Show full metadata for one discovered plugin."""
+    manager = _open_plugin_manager()
+    try:
+        plugin = manager.get_plugin(plugin_name)
+    except PluginNotFoundError as exc:
+        error_console.print(str(exc), markup=False)
+        raise typer.Exit(code=1) from exc
+
+    console.print(f"Name: {plugin.metadata.name}", markup=False)
+    console.print(f"Version: {plugin.metadata.version}", markup=False)
+    console.print(f"Description: {plugin.metadata.description}", markup=False)
+    console.print(f"Author: {plugin.metadata.author or '-'}", markup=False)
+    console.print(f"Entrypoint: {plugin.metadata.entrypoint}", markup=False)
+    console.print(f"Enabled: {'yes' if plugin.enabled else 'no'}", markup=False)
+    console.print(f"Path: {plugin.path}", markup=False)
+    console.print(
+        f"Declared commands: {', '.join(plugin.metadata.commands) if plugin.metadata.commands else '-'}",
+        markup=False,
+    )
+    console.print(f"Declared tools: {', '.join(plugin.metadata.tools) if plugin.metadata.tools else '-'}", markup=False)
+
+
+@plugins_app.command("enable")
+def plugins_enable(plugin_name: str) -> None:
+    """Persist one plugin as enabled without executing it."""
+    manager, state_store = _open_plugin_manager_with_state()
+    try:
+        plugin = manager.get_plugin(plugin_name)
+    except PluginNotFoundError as exc:
+        error_console.print(str(exc), markup=False)
+        raise typer.Exit(code=1) from exc
+
+    state_store.set_enabled(plugin.metadata.name, True)
+    console.print(f"Enabled plugin {plugin.metadata.name}", markup=False)
+
+
+@plugins_app.command("disable")
+def plugins_disable(plugin_name: str) -> None:
+    """Persist one plugin as disabled without executing it."""
+    manager, state_store = _open_plugin_manager_with_state()
+    try:
+        plugin = manager.get_plugin(plugin_name)
+    except PluginNotFoundError as exc:
+        error_console.print(str(exc), markup=False)
+        raise typer.Exit(code=1) from exc
+
+    state_store.set_enabled(plugin.metadata.name, False)
+    console.print(f"Disabled plugin {plugin.metadata.name}", markup=False)
+
+
+@plugins_app.command("validate")
+def plugins_validate(plugin_path: str) -> None:
+    """Validate a plugin folder without importing or executing code."""
+    manager = _open_plugin_manager()
+    try:
+        plugin = manager.validate_plugin_path(plugin_path)
+    except PluginValidationError as exc:
+        error_console.print(str(exc), markup=False)
+        raise typer.Exit(code=1) from exc
+
+    console.print(f"Plugin is valid: {plugin.metadata.name}", markup=False)
 
 
 @files_app.command("list")
@@ -494,6 +588,17 @@ def _open_memory_store() -> SQLiteMemoryStore:
     store = SQLiteMemoryStore(config.memory.db_path)
     store.initialize()
     return store
+
+
+def _open_plugin_manager() -> PluginManager:
+    config = load_config()
+    return PluginManager(config.plugins.directory, state_store=PluginStateStore(_open_memory_store()))
+
+
+def _open_plugin_manager_with_state() -> tuple[PluginManager, PluginStateStore]:
+    state_store = PluginStateStore(_open_memory_store())
+    config = load_config()
+    return PluginManager(config.plugins.directory, state_store=state_store), state_store
 
 
 def _build_memory_table(memories: list[MemoryRecord], title: str) -> Table:

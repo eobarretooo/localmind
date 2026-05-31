@@ -50,10 +50,20 @@ class MemoryConfig(BaseModel):
         return Path(value).expanduser()
 
 
+class PluginSettings(BaseModel):
+    directory: Path = Field(default_factory=lambda: Path("plugins"))
+
+    @field_validator("directory", mode="before")
+    @classmethod
+    def _expand_directory(cls, value: str | Path) -> Path:
+        return Path(value).expanduser()
+
+
 class AppConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     app: AppSettings = Field(default_factory=AppSettings)
     provider: ProviderConfig = Field(default_factory=ProviderConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
+    plugins: PluginSettings = Field(default_factory=PluginSettings)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)

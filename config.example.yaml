@@ -14,5 +14,8 @@ provider:
 memory:
   db_path: ~/.local/share/localmind/memory.sqlite3
 
+plugins:
+  directory: ./plugins
+
 logging:
   level: WARNING

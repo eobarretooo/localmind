@@ -115,6 +115,16 @@ class SQLiteMemoryStore:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS plugin_states (
+                    name TEXT PRIMARY KEY,
+                    enabled INTEGER NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
 
     def create_session(self, session_id: str, title: str) -> SessionRecord:
         timestamp = _timestamp_now()
@@ -312,6 +322,27 @@ class SQLiteMemoryStore:
         with self._connect() as connection:
             result = connection.execute("DELETE FROM memories")
         return result.rowcount
+
+    def get_plugin_enabled(self, name: str) -> bool | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT enabled FROM plugin_states WHERE name = ?", (name,)).fetchone()
+        if row is None:
+            return None
+        return bool(row["enabled"])
+
+    def set_plugin_enabled(self, name: str, enabled: bool) -> None:
+        timestamp = _timestamp_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO plugin_states (name, enabled, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET
+                    enabled = excluded.enabled,
+                    updated_at = excluded.updated_at
+                """,
+                (name, int(enabled), timestamp, timestamp),
+            )
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._db_path)

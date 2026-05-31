@@ -1,0 +1,9 @@
+name: hello_world
+version: 0.1.0
+description: Example LocalMind plugin used to validate plugin discovery.
+author: LocalMind
+entrypoint: main:HelloWorldPlugin
+commands:
+  - hello
+tools: []
+enabled: false
