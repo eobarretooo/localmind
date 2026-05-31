@@ -114,6 +114,11 @@ def test_default_system_prompt_requires_using_session_history_for_follow_ups() -
     assert "answer from the session history" in DEFAULT_SYSTEM_PROMPT
 
 
+def test_default_system_prompt_mentions_relevant_local_memories() -> None:
+    assert "Use relevant local memories when they are provided in context." in DEFAULT_SYSTEM_PROMPT
+    assert "Do not reveal memory storage details unless the user asks." in DEFAULT_SYSTEM_PROMPT
+
+
 def test_agent_sends_system_message_first_to_provider() -> None:
     provider = _RecordingProvider()
     agent = Agent(system_prompt=DEFAULT_SYSTEM_PROMPT, provider_manager=_RecordingProviderManager(provider))

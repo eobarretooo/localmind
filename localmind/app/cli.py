@@ -13,6 +13,7 @@ from localmind.app.bootstrap import build_runtime, write_default_config
 from localmind.config.loader import dump_config, load_config
 from localmind.core.session import SessionNotFoundError
 from localmind.llm.base import ProviderConnectionError
+from localmind.memory.sqlite import MemoryRecord, SQLiteMemoryStore
 from localmind.tools.filesystem import (
     BinaryFileError,
     FileTooLargeError,
@@ -31,6 +32,7 @@ config_app = typer.Typer(help="Inspect configuration")
 models_app = typer.Typer(help="Model connectivity commands")
 sessions_app = typer.Typer(help="Manage persistent chat sessions")
 files_app = typer.Typer(help="Safe local file commands")
+memory_app = typer.Typer(help="Manage local memories")
 console = Console()
 error_console = Console(stderr=True)
 
@@ -38,6 +40,7 @@ app.add_typer(config_app, name="config")
 app.add_typer(models_app, name="models")
 app.add_typer(sessions_app, name="sessions")
 app.add_typer(files_app, name="files")
+app.add_typer(memory_app, name="memory")
 
 _CHAT_EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q"}
 _CHAT_STARTUP_TEXT = "Type 'exit', 'quit', '/exit', '/quit', or ':q' to leave."
@@ -130,6 +133,80 @@ def models_test() -> None:
         error_console.print(str(exc), markup=False)
         raise typer.Exit(code=1) from exc
     console.print(result, markup=False)
+
+
+@memory_app.command("add")
+def memory_add(
+    text: str,
+    tag: list[str] | None = typer.Option(None, "--tag", help="Tag to associate with the memory."),
+) -> None:
+    """Add one local memory item."""
+    store = _open_memory_store()
+    record = store.add_memory(text, tags=tag or [])
+    console.print(record.id, markup=False)
+
+
+@memory_app.command("list")
+def memory_list(limit: int = typer.Option(50, "--limit", min=1, help="Maximum memories to show.")) -> None:
+    """List saved local memories."""
+    store = _open_memory_store()
+    memories = store.list_memories(limit)
+    if not memories:
+        console.print("No memories found.", markup=False)
+        return
+    console.print(_build_memory_table(memories, title="Local memories"))
+
+
+@memory_app.command("show")
+def memory_show(memory_id: str) -> None:
+    """Show one memory item."""
+    store = _open_memory_store()
+    memory = store.get_memory(memory_id)
+    if memory is None:
+        error_console.print(f"Memory not found: {memory_id}", markup=False)
+        raise typer.Exit(code=1)
+    console.print(f"ID: {memory.id}", markup=False)
+    console.print(f"Tags: {', '.join(memory.tags) if memory.tags else '-'}", markup=False)
+    console.print(f"Created: {memory.created_at}", markup=False)
+    console.print(f"Updated: {memory.updated_at}", markup=False)
+    console.print("", markup=False)
+    console.print(memory.content, markup=False)
+
+
+@memory_app.command("search")
+def memory_search(
+    query: str,
+    limit: int = typer.Option(20, "--limit", min=1, help="Maximum memories to show."),
+) -> None:
+    """Search local memories by content or tags."""
+    store = _open_memory_store()
+    memories = store.search_memories(query, limit)
+    if not memories:
+        console.print("No memories found.", markup=False)
+        return
+    console.print(_build_memory_table(memories, title=f"Memory search results for {query}"))
+
+
+@memory_app.command("delete")
+def memory_delete(memory_id: str) -> None:
+    """Delete one memory item."""
+    store = _open_memory_store()
+    if not store.delete_memory(memory_id):
+        error_console.print(f"Memory not found: {memory_id}", markup=False)
+        raise typer.Exit(code=1)
+    console.print(f"Deleted memory {memory_id}", markup=False)
+
+
+@memory_app.command("clear")
+def memory_clear(yes: bool = typer.Option(False, "--yes", help="Skip confirmation prompt.")) -> None:
+    """Delete all local memories after confirmation."""
+    if not yes and not typer.confirm("Delete all local memories?"):
+        console.print("Aborted.", markup=False)
+        raise typer.Exit(code=1)
+
+    store = _open_memory_store()
+    deleted = store.clear_memories()
+    console.print(f"Cleared {deleted} memories", markup=False)
 
 
 @files_app.command("list")
@@ -410,3 +487,35 @@ async def _models_test() -> str:
 def main() -> None:
     """Console script entrypoint."""
     app()
+
+
+def _open_memory_store() -> SQLiteMemoryStore:
+    config = load_config()
+    store = SQLiteMemoryStore(config.memory.db_path)
+    store.initialize()
+    return store
+
+
+def _build_memory_table(memories: list[MemoryRecord], title: str) -> Table:
+    table = Table(title=title)
+    table.add_column("ID")
+    table.add_column("Text")
+    table.add_column("Tags")
+    table.add_column("Created")
+    table.add_column("Updated")
+    for memory in memories:
+        table.add_row(
+            memory.id,
+            _memory_preview(memory.content),
+            ", ".join(memory.tags) if memory.tags else "-",
+            memory.created_at,
+            memory.updated_at,
+        )
+    return table
+
+
+def _memory_preview(content: str, max_length: int = 60) -> str:
+    normalized = " ".join(content.split())
+    if len(normalized) <= max_length:
+        return normalized
+    return normalized[: max_length - 3].rstrip() + "..."

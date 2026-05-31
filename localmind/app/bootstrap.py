@@ -36,6 +36,8 @@ def build_runtime(
         system_prompt=config.app.system_prompt,
         provider_manager=provider_manager,
         max_history_messages=config.app.max_history_messages,
+        memory_store=memory,
+        max_memory_items=config.app.max_memory_items,
     )
     context = AppContext(
         config=config,

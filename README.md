@@ -31,10 +31,11 @@ Only features that exist today are listed here.
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| CLI with Typer | Available | Includes `init`, `ask`, `chat`, `sessions`, `config show`, `models test`, and `files` commands |
+| CLI with Typer | Available | Includes `init`, `ask`, `chat`, `sessions`, `memory`, `config show`, `models test`, and `files` commands |
 | `llama.cpp` / OpenAI-compatible provider | Available | Current backend flow targets a local `llama.cpp` server through an OpenAI-compatible API |
 | Config loading | Available | Loads `./localmind.yaml`, then `~/.config/localmind/config.yaml`, else defaults |
 | Persistent SQLite sessions | Available | Stores session and message history locally |
+| Manual local memory | Available | Supports explicit memory add/list/show/search/delete/clear commands plus deterministic prompt injection |
 | `ask` and `chat` commands | Available | Supports one-shot prompts plus interactive chat with new or resumed sessions |
 | Sessions management | Available | Supports listing, showing, deleting, and resuming saved sessions |
 | Model connectivity test | Available | Verifies provider access and reported model availability |
@@ -149,6 +150,7 @@ Current defaults:
 | Provider URL | `http://127.0.0.1:8080/v1` |
 | Default model | `openbmb/MiniCPM5-1B-GGUF:Q4_K_M` |
 | Max file bytes | `200000` |
+| Max injected memory items | `5` |
 
 Generate a local config file with:
 
@@ -210,6 +212,24 @@ Send another one-shot message into an existing session:
 
 ```bash
 localmind ask "What is my name?" --session SESSION_ID
+```
+
+Add a manual local memory item:
+
+```bash
+localmind memory add "My name is Antonio" --tag profile
+```
+
+List saved memories:
+
+```bash
+localmind memory list
+```
+
+Search memories:
+
+```bash
+localmind memory search Antonio
 ```
 
 List files recursively under the current directory, skipping common build, cache, virtualenv, VCS, and `references/` folders:
@@ -274,9 +294,10 @@ This roadmap separates what is already implemented from what is next or planned.
 
 ### Phase 4 — Local memory
 
-- Status: planned
+- Status: in progress
 - manual memory
 - memory search
+- deterministic relevant-memory injection
 - session summaries
 
 ### Phase 5 — Plugin system

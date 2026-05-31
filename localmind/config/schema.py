@@ -16,7 +16,9 @@ DEFAULT_SYSTEM_PROMPT = (
     "name, treat it as information about the user, acknowledge it naturally, and do not claim "
     "it as your own. Use the conversation history when answering follow-up questions. If the "
     "user asks about information they previously shared in the same session, answer from the "
-    "session history. Do not repeat the user's request unless necessary."
+    "session history. Use relevant local memories when they are provided in context. Do not "
+    "reveal memory storage details unless the user asks. Do not repeat the user's request unless "
+    "necessary."
 )
 
 
@@ -27,6 +29,7 @@ class LoggingConfig(BaseModel):
 class AppSettings(BaseModel):
     system_prompt: str = DEFAULT_SYSTEM_PROMPT
     max_history_messages: int = Field(default=12, ge=1)
+    max_memory_items: int = Field(default=5, ge=1)
     max_file_bytes: int = Field(default=200_000, ge=1)
 
 
